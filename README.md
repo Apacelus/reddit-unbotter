@@ -1,5 +1,6 @@
 # reddit-unbotter
-Anti detection tool for bot masters. Pretends to be human, so reddit doesnt flag the accounts as a bot accounts.
+Anti detection tool for bot masters. Pretends to be human, so reddit doesnt flag the accounts as a bot accounts.  
+**Development will contnue mid Q3 2022**
 ## Concept
 When first run, the accounts will subscribe to 10-15 random popular subreddits.
 The accounts go to reddit at a regular time(±30 min) and browse it. They will do the following actions:
