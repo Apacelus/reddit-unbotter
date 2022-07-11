@@ -1,4 +1,5 @@
 /.idea/
-/stored_data.txt
+/data.json
 /unbotter.log
 /accounts.txt
+/settings.json
