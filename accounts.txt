@@ -1,0 +1,12 @@
+# This is the list containing the accounts that will be unbotted. Do not leave emtpy lines. Add new accounts like this:
+name:password
+anonym_opinion_1:zj2RbjijfU$MuHHQ
+anonym_opinion_2:zj2RbjijfU$MuHHQ
+anonym_opinion_3:zj2RbjijfU$MuHHQ
+anonym_opinion_4:zj2RbjijfU$MuHHQ
+anonym_opinion_5:zj2RbjijfU$MuHHQ
+anonym_opinion_6:zj2RbjijfU$MuHHQ
+anonym_opinion_7:zj2RbjijfU$MuHHQ
+anonym_opinion_8:zj2RbjijfU$MuHHQ
+anonym_opinion_9:zj2RbjijfU$MuHHQ
+anonym_opinion_10:zj2RbjijfU$MuHHQ
