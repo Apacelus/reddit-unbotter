@@ -1,0 +1,2 @@
+# This is the list containing the accounts that will be unbotted. Do not leave emtpy lines. Add new accounts like this:
+username:password
