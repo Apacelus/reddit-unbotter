@@ -1,0 +1,1 @@
+# Selenium for Microsoft Edge

@@ -1,5 +1,5 @@
 /.idea/
-/data.json
-/unbotter.log
-/accounts.txt
-/settings.json
+/venv/
+/__pycache__/
+/logs/
+/config/
