@@ -8,23 +8,32 @@ from selenium.common.exceptions import NoSuchElementException, ElementClickInter
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
 from time import sleep
-from json import load as json_load
+from json import load as jload
 from random import uniform, randint
+from os import environ
 
 if __name__ == "selenium_wrapper.firefox":
+    # set env variables
+    environ['WDM_LOG'] = str(logging.NOTSET)
     base_xpath = "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[5]/div["
     with open('./config/settings.json', 'r') as file:
-        settings_json = json_load(file)
+        settings_json = jload(file)
+
+
+def init_driver(proxy_ip):
     driver_options = webdriver.FirefoxOptions()
     driver_options.binary_location = settings_json["browser_path"]
     driver_options.add_argument("--incognito")
-    driver = webdriver.Firefox(log_path="./logs/driver.log", service=FirefoxService(GeckoDriverManager().install()),
+    driver_options.add_argument('--proxy-server=%s' % proxy_ip)
+    driver = webdriver.Firefox(log_path="./logs/driver.log",
+                               service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
                                options=driver_options)
     driver.minimize_window()
-    wait = WebDriverWait(driver, 10)
+    return driver
 
 
-def get_session_cookie(username, password):
+def get_session_cookie(username, password, proxy_ip):
+    driver = init_driver(proxy_ip)
     driver.get("https://www.reddit.com/login/")
     driver.find_element(By.ID, 'loginUsername').send_keys(username)
     driver.find_element(By.ID, 'loginPassword').send_keys(password)
@@ -33,12 +42,11 @@ def get_session_cookie(username, password):
     sleep(5)
     session_cookie = driver.get_cookie("reddit_session")["value"]
     logging.debug(driver.get_cookie("reddit_session"))
-    driver.delete_all_cookies()
-    driver.refresh()
+    driver.quit()
     return session_cookie
 
 
-def delete_top_bar():
+def delete_top_bar(driver):
     try:
         driver.execute_script("""
         var element = arguments[0];
@@ -50,6 +58,9 @@ def delete_top_bar():
 
 
 def login_account(session_cookie, username):
+    with open('./config/data.json', 'r') as file:
+        data_json = jload(file)
+    driver = init_driver(data_json[username]["proxy_ip"])
     logging.info("Logging in account: " + username)
     logging.debug("Session cookie: " + session_cookie)
     driver.get("https://www.reddit.com/")
@@ -63,13 +74,13 @@ def login_account(session_cookie, username):
          'httpOnly': False, 'sameSite': 'None'})
     driver.get("https://www.reddit.com/u/me")
     try:
-        wait.until(ec.url_to_be('https://www.reddit.com/user/' + username + "/"))
+        WebDriverWait(driver, 10).until(ec.url_to_be('https://www.reddit.com/user/' + username + "/"))
         driver.get("https://www.reddit.com/")
-        delete_top_bar()
+        delete_top_bar(driver)
     except TimeoutError:
         logging.warning("Couldnt login as user: " + username)
         driver.delete_all_cookies()
-        return False
+        return "Error"
     # removing reddit popup
     try:
         driver.find_element(By.XPATH,
@@ -77,9 +88,10 @@ def login_account(session_cookie, username):
         logging.info("Removed reddit suggestion")
     except NoSuchElementException:
         pass
+    return driver
 
 
-def scroll_to_next_post(post_id):
+def scroll_to_next_post(post_id, driver):
     driver.execute_script("return arguments[0].scrollIntoView();",
                           driver.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
     try:
@@ -87,38 +99,38 @@ def scroll_to_next_post(post_id):
                 "class"):
             logging.info("Found ad post, skipping")
             post_id += 1
-            return scroll_to_next_post(post_id)
+            return scroll_to_next_post(post_id, driver)
         else:
             return post_id
     except NoSuchElementException:
         logging.warning("Found broken post")
         post_id += 1
-        return scroll_to_next_post(post_id)
+        return scroll_to_next_post(post_id, driver)
 
 
-def upvote_post(post_id):
+def upvote_post(post_id, driver):
     try:
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
     except ElementClickInterceptedException:
-        delete_top_bar()
+        delete_top_bar(driver)
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
     except NoSuchElementException:
         logging.warning("Couldnt find downvote button, trying alternate path")
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[1]").click()
 
 
-def downvote_post(post_id):
+def downvote_post(post_id, driver):
     try:
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
     except ElementClickInterceptedException:
-        delete_top_bar()
+        delete_top_bar(driver)
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
     except NoSuchElementException:
         logging.warning("Couldnt find downvote button, trying alternate path")
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[2]").click()
 
 
-def enter_comments(post_num):
+def enter_comments(post_num, driver):
     try:
         driver.find_element(By.XPATH, base_xpath + str(post_num) + "]/div/div/div[3]/div[5]/div[2]/a").click()
     except NoSuchElementException:
@@ -126,7 +138,7 @@ def enter_comments(post_num):
         driver.find_element(By.XPATH, base_xpath + str(post_num) + "]/div/div/div/div/div[3]/div[5]/div[2]/a").click()
 
 
-def scroll_comments(amount):
+def scroll_comments(amount, driver):
     counter = 1
     try:
         while counter <= amount:
@@ -157,7 +169,7 @@ def scroll_comments(amount):
             return counter
 
 
-def write_comment(comment):
+def write_comment(comment, driver):
     WebDriverWait(driver, 10).until(ec.element_to_be_clickable(
         (By.XPATH,
          "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[2]/div/div[1]/div/div/div"))).send_keys(

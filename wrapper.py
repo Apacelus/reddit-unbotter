@@ -5,10 +5,11 @@ from os import path
 from json import load as jload
 from json import dump as jdump
 from time import sleep
+from requests import get as requests_get
 
 
-def get_session_cookie(username, password):
-    return selenium_wrapper.get_session_cookie(username, password)
+def get_session_cookie(username, password, proxy_ip):
+    return selenium_wrapper.get_session_cookie(username, password, proxy_ip)
 
 
 def scroll_to_next_post(post_id):
@@ -37,7 +38,7 @@ def leave_comment(comment_text):
     return selenium_wrapper.write_comment(comment_text)
 
 
-# the main main methode
+# the main loop
 def main():
     logging.info("Starting main loop")
     # for testing:
@@ -79,6 +80,11 @@ if __name__ == "wrapper":
                         format='%(asctime)s |%(levelname)s| %(message)s')
     logging.info("\n\nNew log:")
     logging.info("Initializing")
+    logging.info("Downloading proxy list")
+    with open('./config/proxy.json', 'w') as file:
+        jdump(requests_get(
+            "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/json/proxies.json").json()[
+                  "https"], file)
     available_browsers = {
         "msedge": False,
         "chrome": False,
@@ -118,8 +124,14 @@ if __name__ == "wrapper":
                     logging.info("Found " + browser_path + " in Windows")
             while True:
                 try:
-                    user_selected_browser = input("Please select browser. Avalable browsers: " + ", ".join(
-                        key for key, value in available_browsers.items() if value) + "\n")
+                    user_selected_browser = input(
+                        "Please select browser. Press Enter to select the first browser. Avalable browsers: " + ", ".join(
+                            key for key, value in available_browsers.items() if value) + "\n")
+                    if user_selected_browser == "":
+                        for browser in available_browsers:
+                            if available_browsers[browser]:
+                                user_selected_browser = browser
+                                break
                     settings_json["browser_path"] = browser_paths_win[user_selected_browser]
                     settings_json["browser"] = user_selected_browser
                     break
@@ -137,13 +149,20 @@ if __name__ == "wrapper":
                     logging.info("Found " + browser_path + " in Linux")
             while True:
                 try:
-                    user_selected_browser = input("Please select browser. Avalable browsers: " + ", ".join(
-                        key for key, value in available_browsers.items() if value) + "\n")
+                    user_selected_browser = input(
+                        "Please select browser. Press Enter to select the first browser. Avalable browsers: " + ", ".join(
+                            key for key, value in available_browsers.items() if value) + "\n")
+                    if user_selected_browser == "":
+                        for browser in available_browsers:
+                            if available_browsers[browser]:
+                                user_selected_browser = browser
+                                break
                     settings_json["browser_path"] = browser_paths_linux[user_selected_browser]
                     settings_json["browser"] = user_selected_browser
                     break
                 except KeyError:
                     print("Browser not found, check your spelling")
+                    print(":" + str(user_selected_browser) + ":")
                     logging.info("Invalid userinput")
                     continue
         else:
