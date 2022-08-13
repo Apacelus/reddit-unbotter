@@ -1,5 +1,4 @@
 import logging
-import os
 from hashlib import md5
 from json import load as jload
 from json import dump as jdump
@@ -112,9 +111,6 @@ def init_new_accounts():
             break
     # adding new accounts:
     import wrapper
-    #######################################################
-    # RANDOMIZATION/TOR ROUTING NEEDED HERE!!!!!!!!!!!!!  #
-    #######################################################
     with open('./config/proxy.json', 'r') as f:
         proxy_json = jload(f)
     proxy_counter = 0

@@ -8,12 +8,16 @@ from time import sleep
 from requests import get as requests_get
 
 
+def init_driver(proxy_ip):
+    return selenium_wrapper.init_driver(proxy_ip)
+
+
 def get_session_cookie(username, password, proxy_ip):
     return selenium_wrapper.get_session_cookie(username, password, proxy_ip)
 
 
-def scroll_to_next_post(post_id):
-    return selenium_wrapper.scroll_to_next_post(post_id)
+def scroll_to_next_post(driver, post_id):
+    return selenium_wrapper.scroll_to_next_post(driver, post_id)
 
 
 def join_subreddit(subreddit_id):
@@ -21,31 +25,34 @@ def join_subreddit(subreddit_id):
 
 
 # vote true = up, vote false = down
-def vote_post(post_id, vote):
+def vote_post(driver, post_id, vote):
     if vote:
-        return selenium_wrapper.upvote_post(post_id)
+        return selenium_wrapper.upvote_post(driver, post_id)
     else:
-        return selenium_wrapper.downvote_post(post_id)
+        return selenium_wrapper.downvote_post(driver, post_id)
 
 
-def enter_comments(post_id):
+def enter_comments(driver, post_id):
     logging.info("Entering comments of post: " + post_id)
-    return selenium_wrapper.enter_comments(post_id)
+    return selenium_wrapper.enter_comments(driver, post_id)
 
 
-def leave_comment(comment_text):
+def leave_comment(driver, comment_text):
     logging.info("Writing comment: " + comment_text)
-    return selenium_wrapper.write_comment(comment_text)
+    return selenium_wrapper.write_comment(driver, comment_text)
 
 
 # the main loop
 def main():
     logging.info("Starting main loop")
-    # for testing:
+    # create calender
     with open('./config/data.json', 'r') as file:
         data = jload(file)
-    selenium_wrapper.login_account(data["test_acc_3432"]["session_cookie"], "test_acc_3432")
-
+    #  for counter in range(0, 27):
+    with open('./config/calendar.json', 'w') as file:
+        jdump({}, file)
+    # for testing:
+    selenium_wrapper.prepare_account(data["anonym_opinion_1"]["session_cookie"], "anonym_opinion_1")
     # i = 1
     # while i < 10:
     #     print("At start: " + str(i))

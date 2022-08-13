@@ -24,8 +24,9 @@ def init_driver(proxy_ip):
     driver_options = webdriver.FirefoxOptions()
     driver_options.binary_location = settings_json["browser_path"]
     driver_options.add_argument("--incognito")
+    logging.info("Proxy ip: " + proxy_ip)
     driver_options.add_argument('--proxy-server=%s' % proxy_ip)
-    driver = webdriver.Firefox(log_path="./logs/driver.log",
+    driver = webdriver.Firefox(service_log_path="./logs/driver.log",
                                service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
                                options=driver_options)
     driver.minimize_window()
@@ -57,7 +58,8 @@ def delete_top_bar(driver):
         logging.warning("Couldnt find top bar")
 
 
-def login_account(session_cookie, username):
+# login account and return correct driver
+def prepare_account(session_cookie, username):
     with open('./config/data.json', 'r') as file:
         data_json = jload(file)
     driver = init_driver(data_json[username]["proxy_ip"])
@@ -91,7 +93,7 @@ def login_account(session_cookie, username):
     return driver
 
 
-def scroll_to_next_post(post_id, driver):
+def scroll_to_next_post(driver, post_id):
     driver.execute_script("return arguments[0].scrollIntoView();",
                           driver.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
     try:
@@ -108,7 +110,7 @@ def scroll_to_next_post(post_id, driver):
         return scroll_to_next_post(post_id, driver)
 
 
-def upvote_post(post_id, driver):
+def upvote_post(driver, post_id):
     try:
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
     except ElementClickInterceptedException:
@@ -119,7 +121,7 @@ def upvote_post(post_id, driver):
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[1]").click()
 
 
-def downvote_post(post_id, driver):
+def downvote_post(driver, post_id):
     try:
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
     except ElementClickInterceptedException:
@@ -130,15 +132,15 @@ def downvote_post(post_id, driver):
         driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[2]").click()
 
 
-def enter_comments(post_num, driver):
+def enter_comments(driver, post_id):
     try:
-        driver.find_element(By.XPATH, base_xpath + str(post_num) + "]/div/div/div[3]/div[5]/div[2]/a").click()
+        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[3]/div[5]/div[2]/a").click()
     except NoSuchElementException:
         logging.warning("Couldnt find comment button, trying alternate path")
-        driver.find_element(By.XPATH, base_xpath + str(post_num) + "]/div/div/div/div/div[3]/div[5]/div[2]/a").click()
+        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[3]/div[5]/div[2]/a").click()
 
 
-def scroll_comments(amount, driver):
+def scroll_comments(driver, amount):
     counter = 1
     try:
         while counter <= amount:
@@ -169,10 +171,10 @@ def scroll_comments(amount, driver):
             return counter
 
 
-def write_comment(comment, driver):
+def write_comment(driver, comment_text):
     WebDriverWait(driver, 10).until(ec.element_to_be_clickable(
         (By.XPATH,
          "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[2]/div/div[1]/div/div/div"))).send_keys(
-        comment)
+        comment_text)
     driver.find_element(By.XPATH,
                         "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[3]/div[1]/button").click()
