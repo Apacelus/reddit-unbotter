@@ -2,8 +2,7 @@ import configparser
 import json
 import logging
 
-import calendar
-import wrapper
+import calendar_json
 from functions import *
 
 
@@ -78,7 +77,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     # remove new accounts from accounts.conf, but keep the section + add accounts to InitializedAccounts + add accounts to calendar
     for account in config["NewAccounts"]:
         config.remove_option("NewAccounts", account)
-        calendar.initialize_account(account)
+        calendar_json.initialize_account(account)
         config.set("InitializedAccounts", account)
 
 
@@ -105,7 +104,7 @@ def remove_accounts(config: configparser.ConfigParser) -> None:
     for account in config["ToBeRemovedAccounts"]:
         config.remove_option("ToBeRemovedAccounts", account)
         config.remove_option("InitializedAccounts", account)
-        calendar.remove_account(account)
+        calendar_json.remove_account(account)
 
     logging.info("Accounts removal complete")
 
