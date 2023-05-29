@@ -16,7 +16,7 @@ if __name__ == "selenium_wrapper.firefox":
     # set env variables
     environ['WDM_LOG'] = str(logging.NOTSET)
     base_xpath = "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[5]/div["
-    with open('./config/settings.json', 'r') as file:
+    with open('configs/settings.json', 'r') as file:
         settings_json = jload(file)
 
 
