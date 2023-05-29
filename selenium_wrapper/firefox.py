@@ -21,14 +21,21 @@ if __name__ == "selenium_wrapper.firefox":
 
 
 def init_driver(proxy_ip):
+    # set driver options
     driver_options = webdriver.FirefoxOptions()
     driver_options.binary_location = settings_json["browser_path"]
     driver_options.add_argument("--incognito")
-    logging.info("Proxy ip: " + proxy_ip)
-    driver_options.add_argument('--proxy-server=%s' % proxy_ip)
+
+    # set firefox profile settings
+    browser_profile = webdriver.FirefoxProfile()
+    browser_profile.set_preference('network.proxy.type', 1)
+    browser_profile.set_preference('network.proxy.socks', proxy_ip[:proxy_ip.find(":")])  # ip itself
+    browser_profile.set_preference('network.proxy.socks_port', proxy_ip[proxy_ip.find(":") + 1:])  # port
+    browser_profile.set_preference('network.proxy.socks_version', 4)  # int
+
     driver = webdriver.Firefox(service_log_path="./logs/driver.log",
                                service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
-                               options=driver_options)
+                               options=driver_options, firefox_profile=browser_profile)
     driver.minimize_window()
     return driver
 
