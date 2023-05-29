@@ -162,6 +162,8 @@ if __name__ == "__main__":
         logging.info("calendar.json not found, creating new")
         cpfile("default_configs/calendar.json", "configs/calendar.json")
 
+    import wrapper
+
     # Parse accounts.conf
     parse_accounts_conf()
 
