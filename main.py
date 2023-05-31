@@ -9,20 +9,22 @@ from functions import *
 def get_user_input(prompt, default_value, min_value, max_value):
     while True:
         try:
-            user_input = input(f"{prompt} ({min_value}-{max_value}), default: {default_value}: ")
+            user_input = input(
+                "\033[92m" + f"{prompt} ({min_value}-{max_value}), default: {default_value}: " + "\033[0m")
             if user_input == "":
                 user_input = default_value
-                return user_input
+                print("\n")  # avoid logging.info() to be on the same line as the input
+                logging.info(f"{default_value} selected")
+                return default_value
             else:
                 user_input = int(user_input)
         except ValueError:
-            logging.error(f"Invalid {prompt.lower()}")
-            print(f"Invalid {prompt.lower()}, try again")
+            print_warning(f"Invalid {prompt.lower()}")
             continue
         if user_input < min_value or user_input > max_value:
-            logging.error(f"Invalid {prompt.lower()}")
-            print(f"Invalid {prompt.lower()}, try again")
+            print_warning(f"Invalid {prompt.lower()}, try again")
             continue
+        logging.info(f"{user_input} selected")
         return user_input
 
 
@@ -32,14 +34,13 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     if accounts_with_no_password := [
         account
         for account in config["NewAccounts"]
-        if config.get("Accounts", account).strip() in ["", None]
+        if config.get("NewAccounts", account).strip() in ["", None]
     ]:
-        logging.error(f"The following new accounts have no password: {accounts_with_no_password}")
-        print_error(f"The following new accounts have no password: {accounts_with_no_password}")
+        logging.critical(f"The following new accounts have no password: {accounts_with_no_password}")
         exit(1)
 
-    print_question("Would you like to use individual settings for the new accounts?")
-    user_answer = input("Y/n: ")
+    user_answer = input(
+        "\033[92m" + "Would you like to use individual settings for the new accounts? (Y/n): " + "\033[0m")
     # if user_answer == "Y" or user_answer == "y" or user_answer == "yes" or user_answer == "":
     print_warning("Individual settings not yet implemented, using settings for all new accounts")
     print("Hint: Press enter for default value")
@@ -53,12 +54,13 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     with open("configs/proxy.json", "r") as file:
         proxy_json = json.load(file)
     # load data.json
-    with open("config/data.json", "r") as file:
+    with open("configs/data.json", "r") as file:
         data_json = json.load(file)
 
     # add new accounts
     proxy_counter = 0
     for account in config["NewAccounts"]:
+        logging.info(f"Adding {account}to data.json")
         # add account to data.json
         temp_account_dict = {
             "password": config.get("NewAccounts", account).strip(),
@@ -75,7 +77,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
             "socks_version": proxy_json[proxy_counter]["socksVersion"],
         }
         data_json[account] = temp_account_dict
-    with open("config/data.json", "w") as file:
+    with open("configs/data.json", "w") as file:
         json.dump(data_json, file)
 
     # remove new accounts from accounts.conf, but keep the section + add accounts to InitializedAccounts + add accounts to calendar
@@ -88,21 +90,13 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
 def remove_accounts(config: configparser.ConfigParser) -> None:
     logging.info("Removing the following accounts: " + ", ".join(config.options("ToBeRemovedAccounts")))
     # load data.json
-    with open("config/data.json", "r") as file:
+    with open("configs/data.json", "r") as file:
         data_json = json.load(file)
     # remove accounts from data.json
     for account in config["ToBeRemovedAccounts"]:
         data_json.pop(account)
-    with open("config/data.json", "w") as file:
+    with open("configs/data.json", "w") as file:
         json.dump(data_json, file)
-
-    # remove accounts from calendar.json
-    with open("config/calendar.json", "r") as file:
-        calendar_json = json.load(file)
-    for account in config["ToBeRemovedAccounts"]:
-        calendar_json.pop(account)
-    with open("config/calendar.json", "w") as file:
-        json.dump(calendar_json, file)
 
     # remove accounts from accounts.conf, but keep the sections + remove accounts from calendar
     for account in config["ToBeRemovedAccounts"]:
@@ -121,9 +115,8 @@ def parse_accounts_conf():
 
     # Check if accounts.conf is empty
     if not config.sections():
-        logging.warning("accounts.conf is empty, creating new")
+        logging.critical("accounts.conf is empty, creating new")
         cpfile("default_configs/accounts.conf", "configs/accounts.conf")
-        print("accounts.conf is empty, please fill it with accounts")
         exit(1)
 
     # Check if accounts need to be removed
@@ -161,10 +154,32 @@ def check_jsons():
 if __name__ == "__main__":
     # Create dirs if needed
     mkdir("logs")
-    mkdir("config")
-    # start logging system
-    logging.basicConfig(filename="logs/unbotter.log", level=logging.INFO,
-                        format="%(asctime)s |%(levelname)s| %(message)s")
+    mkdir("configs")
+    # init logging system
+
+    # Create a logger object
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+
+    # Create a file handler to log to a file
+    file_handler = logging.FileHandler("logs/unbotter.log")
+    file_handler.setLevel(logging.INFO)
+
+    # Create a stream handler to log to the console
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+
+    # Create a formatter to specify the log message format
+    formatter = logging.Formatter("%(asctime)s |%(levelname)s| %(message)s")
+
+    # Set the formatter for both handlers
+    file_handler.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
+
+    # Add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
+
     logging.info("Created log and config directories if needed")
 
     check_jsons()
