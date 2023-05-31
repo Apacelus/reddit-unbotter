@@ -59,8 +59,9 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Updating local version cache file
-        run: echo "${{ needs.check-sha.outputs.remote_version }}" > .github/firefox-version.txt
+      - name: Installing dependencies
+        # firefox build script has alsa as a dependency
+        run: sudo apt-get install -y alsa
 
       - name: Building firefox
         run: bash .github/build-firefox.sh
@@ -78,6 +79,9 @@ jobs:
             Triggered by ${{ github.sha }} at ${{ github.event.repository.updated_at }}
           files: |
             firefox-no-webdriver-flag.tar.xz
+
+      - name: Updating local version cache file
+        run: echo "${{ needs.check-sha.outputs.remote_version }}" > .github/firefox-version.txt
 
       - name: Updating files in main branch
         uses: stefanzweifel/git-auto-commit-action@v4
