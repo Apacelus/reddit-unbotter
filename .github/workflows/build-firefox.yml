@@ -45,7 +45,7 @@ jobs:
           converted_version="FIREFOX_${major}_${minor}${patch:+_${patch}}_RELEASE"
           
           # fail if version is empty
-          if [[ "$latest_version" = "null" ]]; then
+          if [[ "$latest_version" = "" ]]; then
               echo "latest_version is empty"
               exit 1
           fi
