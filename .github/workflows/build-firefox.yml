@@ -64,7 +64,7 @@ jobs:
 
       - name: Installing dependencies
         # firefox build script has alsa as a dependency
-        run: sudo apt-get install -y alsa
+        run: sudo apt-get install -y libasound2-dev
 
       - name: Building firefox
         run: bash .github/build-firefox.sh
