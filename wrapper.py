@@ -1,11 +1,10 @@
 import logging
-
-from platform import system
-from os import path
-from json import load as jload
 from json import dump as jdump
-from time import sleep
-from requests import get as requests_get
+from json import load as jload
+from os import path
+from platform import system
+
+from functions import *
 
 
 def init_driver(proxy_ip):
@@ -45,12 +44,9 @@ def leave_comment(driver, comment_text):
 # the main loop
 def main():
     logging.info("Starting main loop")
-    # create calender
-    with open('./config/data.json', 'r') as file:
+    # load data.json
+    with open('configs/data.json', 'r') as file:
         data = jload(file)
-    #  for counter in range(0, 27):
-    with open('./config/calendar.json', 'w') as file:
-        jdump({}, file)
     # for testing:
     selenium_wrapper.prepare_account(data["anonym_opinion_1"]["session_cookie"], "anonym_opinion_1")
     # i = 1
@@ -109,11 +105,8 @@ if __name__ == "wrapper":
             '~') + r"/.local/share/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf",
         "librewolf_var": "/var/lib/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf"
     }
-    try:
-        with open('./config/settings.json', 'r') as file:
-            settings_json = jload(file)
-    except FileNotFoundError:
-        sleep(5)
+    with open('configs/settings.json', 'r') as file:
+        settings_json = jload(file)
     if not path.isfile(settings_json["browser_path"]):
         logging.info("Browser path not found, checking available browsers")
         if system() == "Windows":
@@ -126,9 +119,9 @@ if __name__ == "wrapper":
                     logging.info("Found " + browser_path + " in Windows")
             while True:
                 try:
-                    user_selected_browser = input(
-                        "Please select browser. Press Enter to select the first browser. Avalable browsers: " + ", ".join(
-                            key for key, value in available_browsers.items() if value) + "\n")
+                    print_question("Please select browser. Press Enter to select the first browser. Avalable browsers: "
+                                   + ", ".join(key for key, value in available_browsers.items() if value) + "\n")
+                    user_selected_browser = input()
                     if user_selected_browser == "":
                         for browser in available_browsers:
                             if available_browsers[browser]:
@@ -151,9 +144,9 @@ if __name__ == "wrapper":
                     logging.info("Found " + browser_path + " in Linux")
             while True:
                 try:
-                    user_selected_browser = input(
-                        "Please select browser. Press Enter to select the first browser. Avalable browsers: " + ", ".join(
-                            key for key, value in available_browsers.items() if value) + "\n")
+                    print_question("Please select browser. Press Enter to select the first browser. Avalable browsers: "
+                                   + ", ".join(key for key, value in available_browsers.items() if value))
+                    user_selected_browser = input()
                     if user_selected_browser == "":
                         for browser in available_browsers:
                             if available_browsers[browser]:
@@ -171,7 +164,7 @@ if __name__ == "wrapper":
             logging.error("Unsupported os")
             print("Unsupported os")
             exit(1)
-        with open("./config/settings.json", 'w') as file:
+        with open("configs/settings.json", 'w') as file:
             jdump(settings_json, file)
         match settings_json["browser"]:
             case "firefox" | "firefox_snap" | "librewolf_home" | "librewolf_var":
