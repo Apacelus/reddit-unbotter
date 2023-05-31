@@ -1,0 +1,94 @@
+name: Build firefox
+on:
+  schedule:
+    - cron: "0 0 * * *" # run at the start of every day
+  workflow_dispatch:
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  public_key: ${{ secrets.PUBLIC }}
+  private_key: ${{ secrets.PRIVATE }}
+
+jobs:
+  check-sha:
+    runs-on: ubuntu-latest
+    outputs:
+      match_results: ${{ steps.check-versions.outputs.match_results }}
+      remote_version: ${{ steps.check-versions.outputs.remote_version }}
+    steps:
+      - name: Checking out repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Determine remote version
+        id: check-versions
+        run: |
+          # Download the firefox archive page
+          html=$(curl -s "https://archive.mozilla.org/pub/firefox/releases/")
+          # Extract the version numbers from the HTML
+          versions=$(echo "$html" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+/' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          # Sort the versions in descending order
+          sorted_versions=$(echo "$versions" | sort -rV)
+          # Select the latest version
+          latest_version=$(echo "$sorted_versions" | head -n 1)
+          
+          # fail if version is empty
+          if [[ "$latest_version" = "null" ]]; then
+              echo "latest_version is empty"
+              exit 1
+          fi
+          
+          # Check remote version against cached one
+          match_results=$([[ "$(cat .github/firefox-version.txt)" == "$latest_version" ]] && echo "true" || echo "false")
+          echo "match_results=$match_results" >> $GITHUB_OUTPUT
+          
+          # Add remote version to output
+          echo "remote_version=$latest_version" >> $GITHUB_OUTPUT
+
+  deploy-repo:
+    runs-on: ubuntu-latest
+    needs: check-sha # needs for the vars from the previous job
+    # Only run script when remote version has changed, aka the results DON'T match
+    if: needs.check-sha.outputs.match_results == 'false'
+    steps:
+      - name: Checking out repository code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      - name: Updating local version cache file
+        run: echo "${{ needs.check-sha.outputs.remote_version }}" > .github/firefox-version.txt
+
+      - name: Building firefox
+        run: bash .github/build-firefox.sh
+
+      - name: Compressing release files
+        run: tar -cv -I 'xz -9 -T0' -f ./firefox-no-webdriver-flag.tar.xz ./release/*
+
+      - name: Publishing new release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "${{ needs.check-sha.outputs.remote_version }}"
+          name: Firefox no webdriver flag - v${{ steps.tag.outputs.commit_message }}
+          prerelease: true
+          body: |
+            Triggered by ${{ github.sha }} at ${{ github.event.repository.updated_at }}
+          files: |
+            firefox-no-webdriver-flag.tar.xz
+
+      - name: Updating files in main branch
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          # Disable setting repo owner as commit author
+          commit_user_name: github-actions[bot]
+          commit_user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          commit_author: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>
+
+          # Optional. Commit message for the created commit.
+          # Defaults to "Apply automatic changes"
+          commit_message: Bump firefox version
+          # Only include needed files
+          file_pattern: 'control-files/keyd-control cache/firefox-version.txt'
