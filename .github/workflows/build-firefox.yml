@@ -63,7 +63,7 @@ jobs:
         run: echo "${{ needs.check-version.outputs.remote_version }}" > .github/firefox-version.txt
 
       - name: Installing dependencies
-        run: sudo apt-get install -y libasound2-dev libpulse-dev libpango1.0-dev libx11-xcb-dev libxrandr-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxfixes-dev libxi-dev libxtst-dev
+        run: sudo apt-get install -y libasound2-dev libpulse-dev libpango1.0-dev libx11-xcb-dev libxrandr-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxfixes-dev libxi-dev libxtst-dev nasm
 
       - name: Building firefox
         run: bash .github/build-firefox.sh
