@@ -23,17 +23,26 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Determine remote version
+      - name: Determine latest remote stable version
         id: check-versions
         run: |
+          # Determine the latest stable version of firefox
+          
           # Download the firefox archive page
           html=$(curl -s "https://archive.mozilla.org/pub/firefox/releases/")
           # Extract the version numbers from the HTML
           versions=$(echo "$html" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+/' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          # Sort the versions in descending order
-          sorted_versions=$(echo "$versions" | sort -rV)
-          # Select the latest version
-          latest_version=$(echo "$sorted_versions" | head -n 1)
+          # Sort the versions in descending order and select the latest version
+          latest_version_standard=$(echo "$versions" | sort -rV | head -n 1)
+          
+          # Splitting the version string into major, minor, and patch components
+          IFS='.' read -ra version_array <<< "$latest_version_standard"
+          major="${version_array[0]}"
+          minor="${version_array[1]}"
+          patch="${version_array[2]:-}"
+          
+          # convert version to hg tag format
+          converted_version="FIREFOX_${major}_${minor}${patch:+_${patch}}_RELEASE"
           
           # fail if version is empty
           if [[ "$latest_version" = "null" ]]; then
@@ -63,7 +72,7 @@ jobs:
         run: echo "${{ needs.check-version.outputs.remote_version }}" > .github/firefox-version.txt
 
       - name: Installing dependencies
-        run: sudo apt-get install -y libasound2-dev libpulse-dev libpango1.0-dev libx11-xcb-dev libxrandr-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxfixes-dev libxi-dev libxtst-dev nasm wabt
+        run: sudo apt-get install -y libasound2-dev libpulse-dev libpango1.0-dev libx11-xcb-dev libxrandr-dev libxcomposite-dev libxcursor-dev libxdamage-dev libxfixes-dev libxi-dev libxtst-dev nasm
 
       - name: Building firefox
         run: bash .github/build-firefox.sh
