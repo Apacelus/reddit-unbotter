@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit when any command fails
+set -e
+
 # This script will build firefox from source without the webdriver flag to prevent websites from checking that flag
 
 latest_version=$(cat .github/firefox-version.txt)
