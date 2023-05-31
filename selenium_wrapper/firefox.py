@@ -20,7 +20,7 @@ if __name__ == "selenium_wrapper.firefox":
         settings_json = jload(file)
 
 
-def init_driver(proxy_ip):
+def init_driver(proxy_ip, proxy_port, socks_version):
     # set driver options
     driver_options = webdriver.FirefoxOptions()
     driver_options.binary_location = settings_json["browser_path"]
@@ -29,9 +29,9 @@ def init_driver(proxy_ip):
     # set firefox profile settings
     browser_profile = webdriver.FirefoxProfile()
     browser_profile.set_preference('network.proxy.type', 1)
-    browser_profile.set_preference('network.proxy.socks', proxy_ip[:proxy_ip.find(":")])  # ip itself
-    browser_profile.set_preference('network.proxy.socks_port', proxy_ip[proxy_ip.find(":") + 1:])  # port
-    browser_profile.set_preference('network.proxy.socks_version', 4)  # int
+    browser_profile.set_preference('network.proxy.socks', proxy_ip)
+    browser_profile.set_preference('network.proxy.socks_port', proxy_port)
+    browser_profile.set_preference('network.proxy.socks_version', socks_version)
 
     driver = webdriver.Firefox(service_log_path="./logs/driver.log",
                                service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
@@ -40,8 +40,8 @@ def init_driver(proxy_ip):
     return driver
 
 
-def get_session_cookie(username, password, proxy_ip):
-    driver = init_driver(proxy_ip)
+def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version):
+    driver = init_driver(proxy_ip, proxy_port, socks_version)
     driver.get("https://www.reddit.com/login/")
     driver.find_element(By.ID, 'loginUsername').send_keys(username)
     driver.find_element(By.ID, 'loginPassword').send_keys(password)

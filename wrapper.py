@@ -12,8 +12,8 @@ def init_driver(proxy_ip):
     return selenium_wrapper.init_driver(proxy_ip)
 
 
-def get_session_cookie(username, password, proxy_ip):
-    return selenium_wrapper.get_session_cookie(username, password, proxy_ip)
+def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version):
+    return selenium_wrapper.get_session_cookie(username, password, proxy_ip, proxy_port, socks_version)
 
 
 def scroll_to_next_post(driver, post_id):
@@ -87,11 +87,6 @@ if __name__ == "wrapper":
                         format='%(asctime)s |%(levelname)s| %(message)s')
     logging.info("\n\nNew log:")
     logging.info("Initializing")
-    logging.info("Downloading proxy list")
-    with open('./config/proxy.json', 'w') as file:
-        jdump(requests_get(
-            "https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/json/proxies.json").json()[
-                  "https"], file)
     available_browsers = {
         "msedge": False,
         "chrome": False,

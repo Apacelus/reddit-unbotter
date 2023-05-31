@@ -50,7 +50,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     comment_chance = get_user_input("Comment chance", 40, 0, 100)
 
     # load proxy list
-    with open("config/proxy.json", "r") as file:
+    with open("configs/proxy.json", "r") as file:
         proxy_json = json.load(file)
     # load data.json
     with open("config/data.json", "r") as file:
@@ -63,12 +63,16 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
         temp_account_dict = {
             "password": config.get("NewAccounts", account).strip(),
             "session_cookie": wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
-                                                         proxy_json[proxy_counter]),
+                                                         proxy_json[proxy_counter]["host"],
+                                                         proxy_json[proxy_counter]["port"],
+                                                         proxy_json[proxy_counter]["socksVersion"]),
             "activity_level": activity_level,
             "vote_chance": vote_chance,
             "upvote_ratio": upvote_ratio,
             "comment_chance": comment_chance,
-            "proxy_ip": proxy_json[proxy_counter]
+            "proxy_ip": proxy_json[proxy_counter]["host"],
+            "proxy_port": proxy_json[proxy_counter]["port"],
+            "socks_version": proxy_json[proxy_counter]["socksVersion"],
         }
         data_json[account] = temp_account_dict
     with open("config/data.json", "w") as file:
@@ -131,6 +135,29 @@ def parse_accounts_conf():
         add_new_accounts(config)
 
 
+def check_jsons():
+    # Check if json files exist and create them if needed
+    for file in ["data.json", "calendar.json", "settings.json"]:
+        try:
+            with open(f"configs/{file}", "r") as json_test:
+                json.load(json_test)
+        except (FileNotFoundError, json.decoder.JSONDecodeError):
+            logging.error(f"{file} is missing or corrupted, creating new")
+            cpfile(f"default_configs/{file}", f"configs/{file}")
+
+    # Check if proxy.json exists
+    if not path_exists("configs/proxy.json"):
+        logging.info("Attempting to downloading proxy list")
+        download_file("https://proxy.koddit.com/home/getproxydata",
+                      "configs/proxy.json")
+        with open("configs/proxy.json", "r") as file:
+            proxy_json = json.load(file)
+        # json has useless data key, remove it
+        proxy_json = proxy_json["data"]
+        with open("configs/proxy.json", "w") as file:
+            json.dump(proxy_json, file)
+
+
 if __name__ == "__main__":
     # Create dirs if needed
     mkdir("logs")
@@ -140,27 +167,7 @@ if __name__ == "__main__":
                         format="%(asctime)s |%(levelname)s| %(message)s")
     logging.info("Created log and config directories if needed")
 
-    # Check if data.json exists
-    try:
-        with open("configs/data.json", "r") as data:
-            settings_json = json.load(data)
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
-        logging.info("data.json not found, creating new")
-        cpfile("default_configs/data.json", "configs/data.json")
-
-    # Check if proxy.json exists
-    if not path_exists("config/proxy.json"):
-        logging.info("Attempting to downloading proxy list")
-        download_file("https://raw.githubusercontent.com/jetkai/proxy-list/main/online-proxies/json/proxies.json",
-                      "config/proxy.json")
-
-    # Check if calendar.json exists
-    try:
-        with open("configs/calendar.json", "r") as data:
-            settings_json = json.load(data)
-    except (FileNotFoundError, json.decoder.JSONDecodeError):
-        logging.info("calendar.json not found, creating new")
-        cpfile("default_configs/calendar.json", "configs/calendar.json")
+    check_jsons()
 
     import wrapper
 
