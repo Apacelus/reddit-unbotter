@@ -7,12 +7,14 @@ set -e
 
 latest_version=$(cat .github/firefox-version.txt)
 
-# Download the source code
-curl -LO "https://archive.mozilla.org/pub/firefox/releases/$latest_version/source/firefox-$latest_version.source.tar.xz"
-# Extract the source code
-tar -xf "firefox-$latest_version.source.tar.xz"
+# Download the bootstrap script
+curl -LO https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py
+# bootstrap the build environment
+python3 bootstrap.py --no-interactive --application-choice=browser
 
-cd firefox-*/
+cd mozilla-unified
+# switch to the latest stable version branch
+hg update $latest_version
 
 # Remove webdriver flag
 sed -i '0,/Navigator includes NavigatorAutomationInformation;/s///' dom/webidl/Navigator.webidl
