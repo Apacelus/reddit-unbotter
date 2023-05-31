@@ -42,7 +42,7 @@ jobs:
           patch="${version_array[2]:-}"
           
           # convert version to hg tag format
-          converted_version="FIREFOX_${major}_${minor}${patch:+_${patch}}_RELEASE"
+          latest_version="FIREFOX_${major}_${minor}${patch:+_${patch}}_RELEASE"
           
           # fail if version is empty
           if [[ "$latest_version" = "" ]]; then
