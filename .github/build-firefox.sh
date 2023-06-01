@@ -14,7 +14,7 @@ python3 bootstrap.py --no-interactive --application-choice=browser
 
 cd mozilla-unified
 # switch to the latest stable version branch
-hg update $latest_version
+# hg update $latest_version
 
 # Remove webdriver flag
 sed -i '0,/Navigator includes NavigatorAutomationInformation;/s///' dom/webidl/Navigator.webidl
