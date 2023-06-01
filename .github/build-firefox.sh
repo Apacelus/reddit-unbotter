@@ -19,6 +19,10 @@ hg update $latest_version
 # Remove webdriver flag
 sed -i '0,/Navigator includes NavigatorAutomationInformation;/s///' dom/webidl/Navigator.webidl
 
+# bootstrap the build environment
+# Use non-artifact build
+yes | ./mach bootstrap --application-choice="Firefox for Desktop"
+
 # build firefox
 ./mach build
 
