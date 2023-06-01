@@ -16,8 +16,10 @@ cd mozilla-unified
 # switch to the latest stable version branch
 # hg update $latest_version
 
-# Remove webdriver flag
+# Remove webdriver flag from the beginning of the file
 sed -i '0,/Navigator includes NavigatorAutomationInformation;/s///' dom/webidl/Navigator.webidl
+# remove the webdriver boolean code
+sed -i '/\/\/ https:\/\/w3c\.github\.io\/webdriver\/webdriver-spec\.html#interface/,/};/d' dom/webidl/Navigator.webidl
 
 # bootstrap the build environment
 # Use non-artifact build
