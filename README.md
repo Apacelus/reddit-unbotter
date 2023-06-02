@@ -1,31 +1,17 @@
 # reddit-unbotter
-Anti detection tool for bot masters. Pretends to be human, to prevent reddit from flagging accounts as bots/spam.  
-In active developement.
-## Concept
-When first run, the accounts will subscribe to 10-15 random popular subreddits.
-The accounts visit reddit at a regular time(±30 min) and browse it. They will do the following actions:
-- view posts
-- upvote(often) 
-- downvote(rare) 
-- comment(very rare)
-## Settings
-- Activity level(how often the account will visit reddit):
-  - 0: Very rarely active account, ~1 hour per month
-  - 1: Rarely active account, ~1 hours every 2 weeks
-  - 2: Casual account, ~30min every 2-3 days
-  - 3(default): Normal account, ~1 hour every day
-  - 4: Highly active account, ~1 hours twice per day  
-  - 5: Extremely active account, ~2 hours twice per day
 
-- Vote ratio(upvote/downvote ratio). Enter 80 for 80/20 ratio (read: 80% upvote, 20% downvote chance). Default: 90/10  
-- Vote chance(the chance to vote on a post). Default: 40  
-- Comment chance(chance to leave a comment on a post). Default: 5  
-## To-do:
-- [x] Selenium implementation
-- [x] Login
-- [ ] Simple reddit "browsing"
-- [ ] Post + comment up/downvote
-- [x] Commenting
-- [ ] Human behavior imitation
-- [ ] Tor network routing
-- [ ] Individual settings for each account
+Anti detection tool for bot masters. Pretends to be human to prevent reddit from flagging accounts as bots/spam.  
+Project is not yet ready for use.
+
+## Concept
+
+This script employs the following tactics to evade bot detection:
+
+1. Use selenium to control a custom firefox browser, which has been modified to remove the webdriver flag (which can be
+   used by websites to detect automation tools)
+2. Use different proxies for accounts
+3. Log in at different times with the reddit accounts
+4. Use different aspect resolutions/aspect ratios
+5. Upvote/downvote, read/write small comments to mimic a real user
+6. Carries over all cookies every time the bot browses reddit, instead of logging in each time
+7. Guide the mouse to a non-precise location in a non-precise manner, instead of clicking the button with selenium
