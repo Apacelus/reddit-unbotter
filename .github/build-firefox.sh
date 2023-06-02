@@ -7,10 +7,8 @@ set -e
 
 latest_version=$(cat .github/firefox-version.txt)
 
-# Download the bootstrap script
-curl -LO https://hg.mozilla.org/mozilla-central/raw-file/default/python/mozboot/bin/bootstrap.py
-# bootstrap the build environment
-python3 bootstrap.py --no-interactive --application-choice=browser
+# clone the mozilla repo
+git clone --depth 1 --branch --single-branch https://github.com/mozilla/gecko-dev.git mozilla-unified
 
 cd mozilla-unified
 # switch to the latest stable version branch
