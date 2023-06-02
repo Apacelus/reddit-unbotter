@@ -8,7 +8,7 @@ set -e
 latest_version=$(cat .github/firefox-version.txt)
 
 # clone the mozilla repo
-git clone --depth 1 --branch --single-branch https://github.com/mozilla/gecko-dev.git mozilla-unified
+git clone --depth 1 --branch=master --single-branch https://github.com/mozilla/gecko-dev.git mozilla-unified
 
 cd mozilla-unified
 # switch to the latest stable version branch
