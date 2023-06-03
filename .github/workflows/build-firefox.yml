@@ -76,7 +76,7 @@ jobs:
           remove-haskell: 'true'
           remove-codeql: 'true'
           remove-docker-images: 'true'
-
+          overprovision-lvm: 'true'
 
       - name: Checking out repository code
         uses: actions/checkout@v3
