@@ -19,7 +19,8 @@ class KeyGetter:
         atexit.register(self.disarm)
 
     def disarm(self):
-        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_term)
+        with contextlib.suppress(ValueError):
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_term)
 
     def getch(self):
         self.arm()
