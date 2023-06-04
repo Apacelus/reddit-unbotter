@@ -1,22 +1,77 @@
+import json
 import logging
-from json import dump as jdump
-from json import load as jload
-from os import path
-from platform import system
+from random import randint, uniform
+from time import sleep
 
-from functions import *
+from selenium.common import NoSuchElementException, ElementClickInterceptedException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ec
+from selenium.webdriver.support.wait import WebDriverWait
+
+base_xpath = "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[5]/div["
 
 
-def init_driver(proxy_ip):
-    return selenium_wrapper.init_driver(proxy_ip)
+def init_browser(proxy_ip, proxy_port, socks_version):
+    return driver.init_session(proxy_ip, proxy_port, socks_version)
 
 
 def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version):
-    return selenium_wrapper.get_session_cookie(username, password, proxy_ip, proxy_port, socks_version)
+    browser = init_browser(proxy_ip, proxy_port, socks_version)
+    browser.get("https://www.reddit.com/login/")
+    browser.find_element(By.ID, 'loginUsername').send_keys(username)
+    browser.find_element(By.ID, 'loginPassword').send_keys(password)
+    sleep(1)
+    browser.find_element(By.XPATH, '/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button').click()
+    sleep(5)
+    session_cookie = browser.get_cookie("reddit_session")["value"]
+    logging.debug(browser.get_cookie("reddit_session"))
+    browser.quit()
+    return session_cookie
 
 
-def scroll_to_next_post(driver, post_id):
-    return selenium_wrapper.scroll_to_next_post(driver, post_id)
+def prepare_session(session_cookie: str, username: str) -> str:
+    with open('./config/data.json', 'r') as data_file:
+        data_json = json.load(data_file)
+    browser = init_browser(data_json[username]["proxy_ip"], data_json[username]["proxy_port"],
+                           data_json[username]["socks_version"])
+    logging.info(f"Preparing session for account: {username}")
+    logging.debug(f"Session cookie: {session_cookie}")
+    browser.get("https://www.reddit.com/")
+    browser.add_cookie(
+        {'name': 'reddit_session', 'value': session_cookie, 'path': '/', 'domain': 'reddit.com', 'secure': True,
+         'httpOnly': True, 'sameSite': 'None'})
+    # cookie denial cookie, to get rid of cookie prompt
+    browser.add_cookie(
+        {'name': 'eu_cookie', 'value': "{%22opted%22:true%2C%22nonessential%22:false}", 'path': '/',
+         'domain': 'reddit.com', 'secure': False,
+         'httpOnly': False, 'sameSite': 'None'})
+    browser.get("https://www.reddit.com/u/me")
+    try:
+        WebDriverWait(browser, 10).until(ec.url_to_be(f"https://www.reddit.com/user/{username}/"))
+        browser.get("https://www.reddit.com/")
+        delete_top_bar(browser)
+    except TimeoutError:
+        logging.error(f"Couldn't login as user: {username}")
+        browser.quit()
+        return "Couldn't login"
+    # removing reddit popup
+    # try:
+    #     browser.find_element(By.XPATH,
+    #                          "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[1]/button").click()
+    #     logging.info("Removed reddit suggestion")
+    # except NoSuchElementException:
+    #     pass
+
+
+def delete_top_bar(browser):
+    try:
+        browser.execute_script("""
+        var element = arguments[0];
+        element.parentNode.removeChild(element);
+        """, browser.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[1]/header"))
+        logging.debug("Deleted top bar!!!")
+    except NoSuchElementException:
+        logging.warning("Couldn't find top bar")
 
 
 def join_subreddit(subreddit_id):
@@ -24,21 +79,103 @@ def join_subreddit(subreddit_id):
 
 
 # vote true = up, vote false = down
-def vote_post(driver, post_id, vote):
-    if vote:
-        return selenium_wrapper.upvote_post(driver, post_id)
-    else:
-        return selenium_wrapper.downvote_post(driver, post_id)
+def vote_post(browser, post_id, vote):
+    pass
 
 
-def enter_comments(driver, post_id):
-    logging.info("Entering comments of post: " + post_id)
-    return selenium_wrapper.enter_comments(driver, post_id)
+def leave_comment(browser, comment_text):
+    pass
 
 
-def leave_comment(driver, comment_text):
-    logging.info("Writing comment: " + comment_text)
-    return selenium_wrapper.write_comment(driver, comment_text)
+def scroll_to_next_post(browser, post_id):
+    browser.execute_script("return arguments[0].scrollIntoView();",
+                          browser.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
+    try:
+        if "promotedlink" not in browser.find_element(
+            By.XPATH, base_xpath + str(post_id) + "]/div/div"
+        ).get_attribute("class"):
+            return post_id
+        logging.info("Found ad post, skipping")
+        post_id += 1
+        return scroll_to_next_post(post_id, browser)
+    except NoSuchElementException:
+        logging.warning("Found broken post")
+        post_id += 1
+        return scroll_to_next_post(post_id, browser)
+
+
+def upvote_post(browser, post_id):
+    try:
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
+    except ElementClickInterceptedException:
+        delete_top_bar(browser)
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
+    except NoSuchElementException:
+        logging.warning("Couldnt find downvote button, trying alternate path")
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[1]").click()
+
+
+def downvote_post(browser, post_id):
+    try:
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
+    except ElementClickInterceptedException:
+        delete_top_bar(browser)
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
+    except NoSuchElementException:
+        logging.warning("Couldnt find downvote button, trying alternate path")
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[2]").click()
+
+
+def enter_comments(browser, post_id):
+    try:
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[3]/div[5]/div[2]/a").click()
+    except NoSuchElementException:
+        logging.warning("Couldnt find comment button, trying alternate path")
+        browser.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[3]/div[5]/div[2]/a").click()
+
+
+def scroll_comments(browser, amount):
+    counter = 1
+    try:
+        while counter <= amount:
+            print(
+                f'/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[5]/div/div/div/div[{counter}]'
+            )
+            browser.execute_script(
+                "return arguments[0].scrollIntoView();",
+                browser.find_element(
+                    By.XPATH,
+                    f'/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[5]/div/div/div/div[{counter}]',
+                ),
+            )
+            counter += randint(1, 3)
+            sleep(uniform(2, 4))
+    except NoSuchElementException:
+        logging.info("Couldnt find next comment, using alt path")
+        try:
+            while counter <= amount:
+                print(
+                    '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
+                        counter) + ']')
+                browser.execute_script("return arguments[0].scrollIntoView();", browser.find_element(By.XPATH,
+                                                                                                   '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
+                                                                                                       counter) + ']'))
+                sleep(uniform(2, 4))
+                counter += randint(1, 3)
+        except NoSuchElementException:
+            logging.info("Couldnt find next comment, probably no more comments")
+            browser.execute_script("window.history.go(-1)")
+            sleep(2)
+            return counter
+
+
+def write_comment(browser, comment_text):
+    WebDriverWait(browser, 10).until(ec.element_to_be_clickable(
+        (By.XPATH,
+         "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[2]/div/div[1]/div/div/div"))).send_keys(
+        comment_text)
+    browser.find_element(By.XPATH,
+                        "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[3]/div[1]/button").click()
 
 
 # the main loop
@@ -46,9 +183,9 @@ def main():
     logging.info("Starting main loop")
     # load data.json
     with open('configs/data.json', 'r') as file:
-        data = jload(file)
+        data = json.load(file)
     # for testing:
-    selenium_wrapper.prepare_account(data["anonym_opinion_1"]["session_cookie"], "anonym_opinion_1")
+    prepare_session(data["anonym_opinion_1"]["session_cookie"], "anonym_opinion_1")
     # i = 1
     # while i < 10:
     #     print("At start: " + str(i))
@@ -78,123 +215,25 @@ def main():
     # print(scroll_comments(10))
 
 
-if __name__ == "wrapper":
+if __name__ == "browser_wrapper":
     logging.basicConfig(filename='./logs/unbotter.log', level=logging.INFO,
                         format='%(asctime)s |%(levelname)s| %(message)s')
     logging.info("\n\nNew log:")
     logging.info("Initializing")
-    available_browsers = {
-        "msedge": False,
-        "chrome": False,
-        "firefox": False,
-        "firefox_snap": False,
-        "librewolf_home": False,
-        "librewolf_var": False
-    }
-    browser_paths_win = {
-        "msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        "firefox": r"C:\Program Files\Mozilla Firefox\firefox.exe"
-    }
-    browser_paths_linux = {
-        "msedge": r"/usr/bin/microsoft-edge",
-        "chrome": r"/usr/bin/google-chrome",
-        "firefox": r"/usr/bin/firefox",
-        "firefox_snap": r"/snap/bin/firefox",
-        "librewolf_home": path.expanduser(
-            '~') + r"/.local/share/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf",
-        "librewolf_var": "/var/lib/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf"
-    }
-    with open('configs/settings.json', 'r') as file:
-        settings_json = jload(file)
-    if not path.isfile(settings_json["browser_path"]):
-        logging.info("Browser path not found, checking available browsers")
-        if system() == "Windows":
-            logging.info("System is Windows")
-            settings_json["os"] = "Windows"
-            for browser_path in browser_paths_win:
-                if path.isfile(browser_paths_win[browser_path]):
-                    settings_json["browser_path"] = browser_paths_win[browser_path]
-                    available_browsers[browser_path] = True
-                    logging.info("Found " + browser_path + " in Windows")
-            while True:
-                try:
-                    print_question("Please select browser. Press Enter to select the first browser. Avalable browsers: "
-                                   + ", ".join(key for key, value in available_browsers.items() if value) + "\n")
-                    user_selected_browser = input()
-                    if user_selected_browser == "":
-                        for browser in available_browsers:
-                            if available_browsers[browser]:
-                                user_selected_browser = browser
-                                break
-                    settings_json["browser_path"] = browser_paths_win[user_selected_browser]
-                    settings_json["browser"] = user_selected_browser
-                    break
-                except KeyError:
-                    print("Browser not found, check your spelling")
-                    logging.info("Invalid userinput")
-                    continue
-        elif system() == "Linux":
-            logging.info("System is Linux")
-            settings_json["os"] = "Linux"
-            for browser_path in browser_paths_linux:
-                if path.isfile(browser_paths_linux[browser_path]):
-                    settings_json["browser_path"] = browser_paths_linux[browser_path]
-                    available_browsers[browser_path] = True
-                    logging.info("Found " + browser_path + " in Linux")
-            while True:
-                try:
-                    print_question("Please select browser. Press Enter to select the first browser. Avalable browsers: "
-                                   + ", ".join(key for key, value in available_browsers.items() if value))
-                    user_selected_browser = input()
-                    if user_selected_browser == "":
-                        for browser in available_browsers:
-                            if available_browsers[browser]:
-                                user_selected_browser = browser
-                                break
-                    settings_json["browser_path"] = browser_paths_linux[user_selected_browser]
-                    settings_json["browser"] = user_selected_browser
-                    break
-                except KeyError:
-                    print("Browser not found, check your spelling")
-                    print(":" + str(user_selected_browser) + ":")
-                    logging.info("Invalid userinput")
-                    continue
-        else:
-            logging.error("Unsupported os")
-            print("Unsupported os")
-            exit(1)
-        with open("configs/settings.json", 'w') as file:
-            jdump(settings_json, file)
-        match settings_json["browser"]:
-            case "firefox" | "firefox_snap" | "librewolf_home" | "librewolf_var":
-                logging.info("Wrapper for browser: " + settings_json["browser"])
-                import selenium_wrapper.firefox as selenium_wrapper
-            case "chrome":
-                logging.info("Wrapper for browser: Chrome(ium)")
-                import selenium_wrapper.chromium as selenium_wrapper
-            case "msedge":
-                logging.info("Wrapper for browser: Microsoft Edge")
-                import selenium_wrapper.msedge as selenium_wrapper
-            case _:
-                logging.error("Browser not found")
-                print("Browser not found")
-                exit(1)
 
-    else:
-        logging.info("Browser path verified")
-        logging.info("OS: " + settings_json["os"] + ", browser: " + settings_json["browser_path"])
-        match settings_json["browser"]:
-            case "firefox" | "firefox_snap" | "librewolf_home" | "librewolf_var":
-                logging.info("Wrapper for browser: " + settings_json["browser"])
-                import selenium_wrapper.firefox as selenium_wrapper
-            case "chrome":
-                logging.info("Wrapper for browser: Chrome(ium)")
-                import selenium_wrapper.chromium as selenium_wrapper
-            case "msedge":
-                logging.info("Wrapper for browser: Microsoft Edge")
-                import selenium_wrapper.msedge as selenium_wrapper
-            case _:
-                logging.error("Browser not found")
-                print("Browser not found")
-                exit(1)
+    with open('configs/settings.json', 'r') as file:
+        settings_json = json.load(file)
+
+    match settings_json["browser"]:
+        case "firefox" | "firefox_snap" | "librewolf_home" | "librewolf_var":
+            logging.info("Using geckodriver")
+            import selenium_drivers.firefox as driver
+        case "chrome":
+            logging.info("Using generic ChromeDriver")
+            import selenium_drivers.chromium as driver
+        case "msedge":
+            logging.info("Using Microsoft Edge Driver")
+            import selenium_drivers.msedge as driver
+        case _:
+            logging.error("Browser not found")
+            exit(1)

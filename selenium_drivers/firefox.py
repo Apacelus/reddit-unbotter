@@ -1,187 +1,33 @@
 # Selenium for firefox
+import json
 import logging
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.support import expected_conditions as ec
+import os
+
 from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
 from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.firefox import GeckoDriverManager
-from time import sleep
-from json import load as jload
-from random import uniform, randint
-from os import environ
 
-if __name__ == "selenium_wrapper.firefox":
+if __name__ == "selenium_drivers.firefox":
     # set env variables
-    environ['WDM_LOG'] = str(logging.NOTSET)
-    base_xpath = "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[5]/div["
+    os.environ['WDM_LOG'] = str(logging.NOTSET)
+
+
+def init_session(proxy_ip, proxy_port, socks_version):
+    browser_options = webdriver.FirefoxOptions()
     with open('configs/settings.json', 'r') as file:
-        settings_json = jload(file)
-
-
-def init_driver(proxy_ip, proxy_port, socks_version):
-    # set driver options
-    driver_options = webdriver.FirefoxOptions()
-    driver_options.binary_location = settings_json["browser_path"]
-    driver_options.add_argument("--incognito")
+        settings_json = json.load(file)
+    browser_options.binary_location = settings_json["browser_path"]
 
     # set firefox profile settings
-    browser_profile = webdriver.FirefoxProfile()
-    browser_profile.set_preference('network.proxy.type', 1)
-    browser_profile.set_preference('network.proxy.socks', proxy_ip)
-    browser_profile.set_preference('network.proxy.socks_port', proxy_port)
-    browser_profile.set_preference('network.proxy.socks_version', socks_version)
+    firefox_profile = webdriver.FirefoxProfile()
+    firefox_profile.set_preference('network.proxy.type', 1)
+    firefox_profile.set_preference('network.proxy.socks', proxy_ip)
+    firefox_profile.set_preference('network.proxy.socks_port', proxy_port)
+    firefox_profile.set_preference('network.proxy.socks_version', socks_version)
 
-    driver = webdriver.Firefox(service_log_path="./logs/driver.log",
-                               service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
-                               options=driver_options, firefox_profile=browser_profile)
-    driver.minimize_window()
-    return driver
-
-
-def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version):
-    driver = init_driver(proxy_ip, proxy_port, socks_version)
-    driver.get("https://www.reddit.com/login/")
-    driver.find_element(By.ID, 'loginUsername').send_keys(username)
-    driver.find_element(By.ID, 'loginPassword').send_keys(password)
-    sleep(1)
-    driver.find_element(By.XPATH, '/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button').click()
-    sleep(5)
-    session_cookie = driver.get_cookie("reddit_session")["value"]
-    logging.debug(driver.get_cookie("reddit_session"))
-    driver.quit()
-    return session_cookie
-
-
-def delete_top_bar(driver):
-    try:
-        driver.execute_script("""
-        var element = arguments[0];
-        element.parentNode.removeChild(element);
-        """, driver.find_element(By.XPATH, "/html/body/div[1]/div/div[2]/div[1]/header"))
-        logging.debug("Deleted top bar!!!")
-    except NoSuchElementException:
-        logging.warning("Couldnt find top bar")
-
-
-# login account and return correct driver
-def prepare_account(session_cookie, username):
-    with open('./config/data.json', 'r') as file:
-        data_json = jload(file)
-    driver = init_driver(data_json[username]["proxy_ip"])
-    logging.info("Logging in account: " + username)
-    logging.debug("Session cookie: " + session_cookie)
-    driver.get("https://www.reddit.com/")
-    driver.add_cookie(
-        {'name': 'reddit_session', 'value': session_cookie, 'path': '/', 'domain': 'reddit.com', 'secure': True,
-         'httpOnly': True, 'sameSite': 'None'})
-    # cookie denial cookie, to get rid of cookie prompt
-    driver.add_cookie(
-        {'name': 'eu_cookie', 'value': "{%22opted%22:true%2C%22nonessential%22:false}", 'path': '/',
-         'domain': 'reddit.com', 'secure': False,
-         'httpOnly': False, 'sameSite': 'None'})
-    driver.get("https://www.reddit.com/u/me")
-    try:
-        WebDriverWait(driver, 10).until(ec.url_to_be('https://www.reddit.com/user/' + username + "/"))
-        driver.get("https://www.reddit.com/")
-        delete_top_bar(driver)
-    except TimeoutError:
-        logging.warning("Couldnt login as user: " + username)
-        driver.delete_all_cookies()
-        return "Error"
-    # removing reddit popup
-    try:
-        driver.find_element(By.XPATH,
-                            "/html/body/div[1]/div/div[2]/div[2]/div/div/div/div[2]/div[2]/div[1]/div[1]/button").click()
-        logging.info("Removed reddit suggestion")
-    except NoSuchElementException:
-        pass
-    return driver
-
-
-def scroll_to_next_post(driver, post_id):
-    driver.execute_script("return arguments[0].scrollIntoView();",
-                          driver.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
-    try:
-        if "promotedlink" in driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div").get_attribute(
-                "class"):
-            logging.info("Found ad post, skipping")
-            post_id += 1
-            return scroll_to_next_post(post_id, driver)
-        else:
-            return post_id
-    except NoSuchElementException:
-        logging.warning("Found broken post")
-        post_id += 1
-        return scroll_to_next_post(post_id, driver)
-
-
-def upvote_post(driver, post_id):
-    try:
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
-    except ElementClickInterceptedException:
-        delete_top_bar(driver)
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[1]").click()
-    except NoSuchElementException:
-        logging.warning("Couldnt find downvote button, trying alternate path")
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[1]").click()
-
-
-def downvote_post(driver, post_id):
-    try:
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
-    except ElementClickInterceptedException:
-        delete_top_bar(driver)
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[2]/div/button[2]").click()
-    except NoSuchElementException:
-        logging.warning("Couldnt find downvote button, trying alternate path")
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[2]/div/button[2]").click()
-
-
-def enter_comments(driver, post_id):
-    try:
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div[3]/div[5]/div[2]/a").click()
-    except NoSuchElementException:
-        logging.warning("Couldnt find comment button, trying alternate path")
-        driver.find_element(By.XPATH, base_xpath + str(post_id) + "]/div/div/div/div/div[3]/div[5]/div[2]/a").click()
-
-
-def scroll_comments(driver, amount):
-    counter = 1
-    try:
-        while counter <= amount:
-            print(
-                '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[5]/div/div/div/div[' + str(
-                    counter) + ']')
-            driver.execute_script("return arguments[0].scrollIntoView();", driver.find_element(By.XPATH,
-                                                                                               '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[5]/div/div/div/div[' + str(
-                                                                                                   counter) + ']'))
-            counter += randint(1, 3)
-            sleep(uniform(2, 4))
-    except NoSuchElementException:
-        logging.info("Couldnt find next comment, using alt path")
-        try:
-            while counter <= amount:
-                print(
-                    '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
-                        counter) + ']')
-                driver.execute_script("return arguments[0].scrollIntoView();", driver.find_element(By.XPATH,
-                                                                                                   '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
-                                                                                                       counter) + ']'))
-                sleep(uniform(2, 4))
-                counter += randint(1, 3)
-        except NoSuchElementException:
-            logging.info("Couldnt find next comment, probably no more comments")
-            driver.execute_script("window.history.go(-1)")
-            sleep(2)
-            return counter
-
-
-def write_comment(driver, comment_text):
-    WebDriverWait(driver, 10).until(ec.element_to_be_clickable(
-        (By.XPATH,
-         "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[2]/div/div[1]/div/div/div"))).send_keys(
-        comment_text)
-    driver.find_element(By.XPATH,
-                        "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[3]/div[1]/button").click()
+    session = webdriver.Firefox(
+        service_log_path=f"/home/{os.getlogin()}/PycharmProjects/reddit-unbotter/logs/driver.log",
+        service=FirefoxService(GeckoDriverManager(cache_valid_range=1).install()),
+        options=browser_options, firefox_profile=firefox_profile)
+    # session.minimize_window()
+    return session
