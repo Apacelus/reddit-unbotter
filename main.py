@@ -256,52 +256,24 @@ def check_browser_path():
     if not path_exists(settings_json["browser_path"]):
         logging.warning("Browser not found")
         logging.info("Searching system for browsers")
-        browser_paths_win = {
-            "msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-            "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-            "firefox": r"C:\Program Files\Mozilla Firefox\firefox.exe"
-        }
-        browser_paths_linux = {
-            "msedge": r"/usr/bin/microsoft-edge",
-            "chrome": r"/usr/bin/google-chrome",
-            # TODO: Add more chromium paths
-
-            "firefox": r"/usr/bin/firefox",
-            "firefox_snap": r"/snap/bin/firefox",
-            "firefox_flatpak_home": f"/home/{os.getlogin()}/.local/share/flatpak/app/org.mozilla.firefox/current/"
-                                    f"active/files/lib/firefox/firefox",
-            "firefox_flatpak": "/var/lib/flatpak/app/org.mozilla.firefox/current/active/files/lib/firefox/firefox",
-
-            "librewolf_flatpak_home": f"/home/{os.getlogin()}/.local/share/flatpak/app/io.gitlab.librewolf-community"
-                                      f"/current/active/files/lib/librewolf/librewolf",
-            "librewolf_flatpak": "/var/lib/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf"
-        }
+        # read browser_paths.conf
+        config = configparser.ConfigParser()
+        config.read("configs/browser_paths.conf")
+        browser_paths = config[sys.platform]
         available_browsers = {}
-        match sys.platform:
-            case "linux":
-                for browser_path in browser_paths_linux:
-                    if path_exists(browser_paths_linux[browser_path]):
-                        logging.info(f"Found {browser_path}")
-                        available_browsers[browser_path] = browser_paths_linux[
-                            browser_path
-                        ]
-            case "win32":  # win64 will report itself as win32
-                for browser_path in browser_paths_win:
-                    if path_exists(browser_paths_win[browser_path]):
-                        logging.info(f"Found {browser_path}")
-                        available_browsers[browser_path] = browser_paths_win[
-                            browser_path
-                        ]
-            case _:
-                logging.critical(f"{sys.platform} not supported")
-                exit(1)
+        for browser_name in browser_paths:
+            if browser_paths[browser_name].startswith("~"):
+                browser_paths[browser_name] = browser_paths[browser_name].replace("~", os.path.expanduser("~"))
+            if path_exists(browser_paths[browser_name]):
+                logging.info(f"Found {browser_name}")
+                available_browsers[browser_name] = browser_paths[browser_name]
 
-        user_selection = ia_selection("Please select a browser", options=available_browsers.keys())
+        user_selection = ia_selection("Please select a browser", options=list(available_browsers.keys()))
         logging.info(f"User selected the {user_selection} browser")
         # TODO: Add support for multiple browsers
 
         settings_json["browser_path"] = available_browsers[user_selection]
-        settings_json["browser"] = user_selection
+        settings_json["browser"] = user_selection.split("_")[0].lower()  # remove _flatpak ending
         with open("user_configs/settings.json", "w") as file:
             json.dump(settings_json, file)
 
