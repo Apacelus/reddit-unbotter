@@ -1,9 +1,101 @@
+import atexit
 import configparser
 import json
 import logging
+import os
+import termios
+import tty
+from itertools import zip_longest
 
 import calendar_json
 from functions import *
+
+
+class KeyGetter:
+    def arm(self):
+        self.old_term = termios.tcgetattr(sys.stdin)
+        tty.setcbreak(sys.stdin)
+
+        atexit.register(self.disarm)
+
+    def disarm(self):
+        termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_term)
+
+    def getch(self):
+        self.arm()
+        ch = sys.stdin.read(1)[0]
+        self.disarm()
+        return ch
+
+
+def ia_selection(question: str, options: list = None, flags: list = None) -> str:
+    print_question(question)
+    return _draw_ia_selection(options, flags)
+
+
+def _draw_ia_selection(options: list, flags: list = None):
+    __UNPOINTED = " "
+    __POINTED = ">"
+    __INDEX = 0
+    __LENGTH = len(options)
+    __ARROWS = __UP, _ = 65, 66
+    __ENTER = 10
+
+    if flags is None:
+        flags = []
+
+    def _choices_print():
+        for i, (option, flag) in enumerate(zip_longest(options, flags, fillvalue='')):
+            if i == __INDEX:
+                print(f" {__POINTED} {{0}}{option} {flag}{{1}}".format('\033[94m', '\033[0m'))
+            else:
+                print(f" {__UNPOINTED} {option} {flag}")
+
+    def _choices_clear():
+        print(f"\033[{__LENGTH}A\033[J", end='')
+
+    def _move_pointer(ch_ord: int):
+        nonlocal __INDEX
+        __INDEX = max(0, __INDEX - 1) if ch_ord == __UP else min(__INDEX + 1, __LENGTH - 1)
+
+    def _main_loop():
+        kg = KeyGetter()
+        _choices_print()
+        while True:
+            key = ord(kg.getch())
+            if key in __ARROWS:
+                _move_pointer(key)
+            _choices_clear()
+            _choices_print()
+            if key == __ENTER:
+                _choices_clear()
+                _choices_print()
+                break
+
+    _main_loop()
+    return options[__INDEX]
+
+
+def init_logger():
+    # Print output to console and log to file
+
+    # Create a logger object
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    # Create a file handler to log to a file
+    file_handler = logging.FileHandler("logs/unbotter.log")
+    file_handler.setLevel(logging.INFO)
+    # Create a stream handler to log to the console
+    stream_handler = logging.StreamHandler()
+    stream_handler.setLevel(logging.INFO)
+    # Create a formatter to specify the log message format
+    formatter = logging.Formatter("%(asctime)s |%(levelname)s| %(message)s")
+    # Set the formatter for both handlers
+    file_handler.setFormatter(formatter)
+    stream_handler.setFormatter(formatter)
+    # Add the handlers to the logger
+    logger.addHandler(file_handler)
+    logger.addHandler(stream_handler)
 
 
 def get_user_input(prompt, default_value, min_value, max_value):
@@ -151,38 +243,70 @@ def check_jsons():
             json.dump(proxy_json, file)
 
 
+def check_browser_path():
+    with open('configs/settings.json', 'r') as file:
+        settings_json = json.load(file)
+    if not path_exists(settings_json["browser_path"]):
+        logging.warning("Browser not found")
+        logging.info("Searching system for browsers")
+        browser_paths_win = {
+            "msedge": r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+            "chrome": r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            "firefox": r"C:\Program Files\Mozilla Firefox\firefox.exe"
+        }
+        browser_paths_linux = {
+            "msedge": r"/usr/bin/microsoft-edge",
+            "chrome": r"/usr/bin/google-chrome",
+            # TODO: Add more chromium paths
+
+            "firefox": r"/usr/bin/firefox",
+            "firefox_snap": r"/snap/bin/firefox",
+            "firefox_flatpak_home": f"/home/{os.getlogin()}/.local/share/flatpak/app/org.mozilla.firefox/current/"
+                                    f"active/files/lib/firefox/firefox",
+            "firefox_flatpak": "/var/lib/flatpak/app/org.mozilla.firefox/current/active/files/lib/firefox/firefox",
+
+            "librewolf_flatpak_home": f"/home/{os.getlogin()}/.local/share/flatpak/app/io.gitlab.librewolf-community"
+                                      f"/current/active/files/lib/librewolf/librewolf",
+            "librewolf_flatpak": "/var/lib/flatpak/app/io.gitlab.librewolf-community/current/active/files/lib/librewolf/librewolf"
+        }
+        available_browsers = {}
+        match sys.platform:
+            case "linux":
+                for browser_path in browser_paths_linux:
+                    if path_exists(browser_paths_linux[browser_path]):
+                        logging.info(f"Found {browser_path}")
+                        available_browsers[browser_path] = browser_paths_linux[
+                            browser_path
+                        ]
+            case "win32":  # win64 will report itself as win32
+                for browser_path in browser_paths_win:
+                    if path_exists(browser_paths_win[browser_path]):
+                        logging.info(f"Found {browser_path}")
+                        available_browsers[browser_path] = browser_paths_win[
+                            browser_path
+                        ]
+            case _:
+                logging.critical(f"{sys.platform} not supported")
+                exit(1)
+
+        user_selection = ia_selection("Please select a browser", options=available_browsers.keys())
+        logging.info(f"User selected the {user_selection} browser")
+        # TODO: Add support for multiple browsers
+
+        settings_json["browser_path"] = available_browsers[user_selection]
+        settings_json["browser"] = user_selection
+        with open('configs/settings.json', 'w') as file:
+            json.dump(settings_json, file)
+
+
 if __name__ == "__main__":
     # Create dirs if needed
     mkdir("logs")
     mkdir("configs")
-    # init logging system
-
-    # Create a logger object
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
-    # Create a file handler to log to a file
-    file_handler = logging.FileHandler("logs/unbotter.log")
-    file_handler.setLevel(logging.INFO)
-
-    # Create a stream handler to log to the console
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-
-    # Create a formatter to specify the log message format
-    formatter = logging.Formatter("%(asctime)s |%(levelname)s| %(message)s")
-
-    # Set the formatter for both handlers
-    file_handler.setFormatter(formatter)
-    stream_handler.setFormatter(formatter)
-
-    # Add the handlers to the logger
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
-
+    init_logger()
     logging.info("Created log and config directories if needed")
-
     check_jsons()
+    check_browser_path()
 
     import browser_wrapper
 
@@ -190,4 +314,4 @@ if __name__ == "__main__":
     parse_accounts_conf()
 
     # start main loop
-    wrapper.main()
+    #wrapper.main()
