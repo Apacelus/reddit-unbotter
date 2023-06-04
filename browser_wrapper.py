@@ -105,10 +105,10 @@ def leave_comment(browser, comment_text):
 
 def scroll_to_next_post(browser, post_id):
     browser.execute_script("return arguments[0].scrollIntoView();",
-                          browser.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
+                           browser.find_element(By.XPATH, base_xpath + str(post_id) + ']'))
     try:
         if "promotedlink" not in browser.find_element(
-            By.XPATH, base_xpath + str(post_id) + "]/div/div"
+                By.XPATH, base_xpath + str(post_id) + "]/div/div"
         ).get_attribute("class"):
             return post_id
         logging.info("Found ad post, skipping")
@@ -174,8 +174,8 @@ def scroll_comments(browser, amount):
                     '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
                         counter) + ']')
                 browser.execute_script("return arguments[0].scrollIntoView();", browser.find_element(By.XPATH,
-                                                                                                   '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
-                                                                                                       counter) + ']'))
+                                                                                                     '/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[6]/div/div/div/div[' + str(
+                                                                                                         counter) + ']'))
                 sleep(uniform(2, 4))
                 counter += randint(1, 3)
         except NoSuchElementException:
@@ -191,7 +191,7 @@ def write_comment(browser, comment_text):
          "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[2]/div/div[1]/div/div/div"))).send_keys(
         comment_text)
     browser.find_element(By.XPATH,
-                        "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[3]/div[1]/button").click()
+                         "/html/body/div[1]/div/div[2]/div[3]/div/div/div/div[2]/div[1]/div[3]/div[3]/div[2]/div/div/div[3]/div[1]/button").click()
 
 
 # the main loop
