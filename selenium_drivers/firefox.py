@@ -14,7 +14,7 @@ if __name__ == "selenium_drivers.firefox":
 
 def init_session(proxy_ip, proxy_port, socks_version):
     browser_options = webdriver.FirefoxOptions()
-    with open('configs/settings.json', 'r') as file:
+    with open("user_configs/settings.json", "r") as file:
         settings_json = json.load(file)
     browser_options.binary_location = settings_json["browser_path"]
 

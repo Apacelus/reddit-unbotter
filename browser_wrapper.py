@@ -198,7 +198,7 @@ def write_comment(browser, comment_text):
 def main():
     logging.info("Starting main loop")
     # load data.json
-    with open('configs/data.json', 'r') as file:
+    with open("user_configs/data.json", "r") as file:
         data = json.load(file)
     # for testing:
     prepare_session(data["anonym_opinion_1"]["session_cookie"], "anonym_opinion_1")
@@ -237,7 +237,7 @@ if __name__ == "browser_wrapper":
     logging.info("\n\nNew log:")
     logging.info("Initializing")
 
-    with open('configs/settings.json', 'r') as file:
+    with open("user_configs/settings.json", "r") as file:
         settings_json = json.load(file)
 
     match settings_json["browser"]:

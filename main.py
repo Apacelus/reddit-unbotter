@@ -143,10 +143,10 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     comment_chance = get_user_input("Comment chance", 40, 0, 100)
 
     # load proxy list
-    with open("configs/proxy.json", "r") as file:
+    with open("user_configs/proxy.json", "r") as file:
         proxy_json = json.load(file)
     # load data.json
-    with open("configs/data.json", "r") as file:
+    with open("user_configs/data.json", "r") as file:
         data_json = json.load(file)
 
     # add new accounts
@@ -175,7 +175,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
             "socks_version": proxy_json[proxy_counter]["socksVersion"],
         }
         data_json[account] = temp_account_dict
-    with open("configs/data.json", "w") as file:
+    with open("user_configs/data.json", "w") as file:
         json.dump(data_json, file)
 
     # remove new accounts from accounts.conf, but keep the section + add accounts to InitializedAccounts + add accounts to calendar
@@ -188,12 +188,12 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
 def remove_accounts(config: configparser.ConfigParser) -> None:
     logging.info("Removing the following accounts: " + ", ".join(config.options("ToBeRemovedAccounts")))
     # load data.json
-    with open("configs/data.json", "r") as file:
+    with open("user_configs/data.json", "r") as file:
         data_json = json.load(file)
     # remove accounts from data.json
     for account in config["ToBeRemovedAccounts"]:
         data_json.pop(account)
-    with open("configs/data.json", "w") as file:
+    with open("user_configs/data.json", "w") as file:
         json.dump(data_json, file)
 
     # remove accounts from accounts.conf, but keep the sections + remove accounts from calendar
@@ -209,12 +209,12 @@ def parse_accounts_conf():
     logging.info("Parsing accounts.conf")
     # read accounts.conf
     config = configparser.ConfigParser()
-    config.read("configs/accounts.conf")
+    config.read("user_configs/accounts.conf")
 
     # Check if accounts.conf is empty
     if not config.sections():
         logging.critical("accounts.conf is empty, creating new")
-        cpfile("default_configs/accounts.conf", "configs/accounts.conf")
+        cpfile("configs/default_configs/accounts.conf", "user_configs/accounts.conf")
         exit(1)
 
     # Check if accounts need to be removed
@@ -230,27 +230,27 @@ def check_jsons():
     # Check if json files exist and create them if needed
     for file in ["data.json", "calendar.json", "settings.json"]:
         try:
-            with open(f"configs/{file}", "r") as json_test:
+            with open(f"user_configs/{file}", "r") as json_test:
                 json.load(json_test)
         except (FileNotFoundError, json.decoder.JSONDecodeError):
             logging.error(f"{file} is missing or corrupted, creating new")
-            cpfile(f"default_configs/{file}", f"configs/{file}")
+            cpfile(f"configs/default_configs/{file}", f"user_configs/{file}")
 
     # Check if proxy.json exists
-    if not path_exists("configs/proxy.json"):
+    if not path_exists("user_configs/proxy.json"):
         logging.info("Attempting to downloading proxy list")
         download_file("https://proxy.koddit.com/home/getproxydata",
-                      "configs/proxy.json")
-        with open("configs/proxy.json", "r") as file:
+                      "user_configs/proxy.json")
+        with open("user_configs/proxy.json", "r") as file:
             proxy_json = json.load(file)
         # json has useless data key, remove it
         proxy_json = proxy_json["data"]
-        with open("configs/proxy.json", "w") as file:
+        with open("user_configs/proxy.json", "w") as file:
             json.dump(proxy_json, file)
 
 
 def check_browser_path():
-    with open('configs/settings.json', 'r') as file:
+    with open("user_configs/settings.json", "r") as file:
         settings_json = json.load(file)
     if not path_exists(settings_json["browser_path"]):
         logging.warning("Browser not found")
@@ -301,14 +301,14 @@ def check_browser_path():
 
         settings_json["browser_path"] = available_browsers[user_selection]
         settings_json["browser"] = user_selection
-        with open('configs/settings.json', 'w') as file:
+        with open("user_configs/settings.json", "w") as file:
             json.dump(settings_json, file)
 
 
 if __name__ == "__main__":
     # Create dirs if needed
     mkdir("logs")
-    mkdir("configs")
+    mkdir("user_configs")
     init_logger()
     logging.info("Created log and config directories if needed")
     check_jsons()
