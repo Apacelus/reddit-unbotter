@@ -63,14 +63,14 @@ jobs:
     # Only run script when remote version has changed, aka the results DON'T match
     if: needs.check-version.outputs.match_results == 'false'
     steps:
-      - name: Removing large packages/directories
-        run: curl -L https://raw.githubusercontent.com/apache/flink/master/tools/azure-pipelines/free_disk_space.sh | sudo bash
+     # - name: Removing large packages/directories
+    #    run: curl -L https://raw.githubusercontent.com/apache/flink/master/tools/azure-pipelines/free_disk_space.sh | sudo bash
 
       - name: Maximizing build space
         uses: easimon/maximize-build-space@master
         with:
-          root-reserve-mb: 65000
-          swap-size-mb: 1024
+          root-reserve-mb: 2048
+          swap-size-mb: 2048
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
