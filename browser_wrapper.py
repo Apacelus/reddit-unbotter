@@ -19,15 +19,11 @@ def init_browser(proxy_ip, proxy_port, socks_version):
 def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version) -> str:
     browser = init_browser(proxy_ip, proxy_port, socks_version)
 
-    # most users would go to reddit.com and then click login, instead of going to reddit.com/login
-    browser.get("https://www.reddit.com")
-    browser.find_element(By.LINK_TEXT, "Log In").click()
+    # open the login overlay window directly
+    browser.get("https://www.reddit.com/login/?experiment_d2x_2020ify_buttons=enabled&experiment_d2x_google_sso_gis_"
+                "parity=enabled&experiment_d2x_onboarding=enabled&experiment_d2x_am_modal_design_update=enabled")
+    logging.info("Navigated to reddit.com login window successfully")
 
-    # switch to login iframe
-    browser.switch_to.frame(1)
-
-    # wait until login window opens
-    WebDriverWait(browser, 10).until(ec.element_to_be_clickable((By.ID, "loginUsername")))
     browser.find_element(By.ID, 'loginUsername').send_keys(username)
     browser.find_element(By.ID, 'loginPassword').send_keys(password)
     browser.find_element(By.XPATH, "//button[contains(., 'Log In')]").send_keys(Keys.RETURN)  # click() doesn't work
@@ -241,15 +237,19 @@ if __name__ == "browser_wrapper":
         settings_json = json.load(file)
 
     match settings_json["browser"]:
-        case "firefox" | "firefox_snap" | "librewolf_home" | "librewolf_var":
+        case "firefox" | "librewolf":
             logging.info("Using geckodriver")
             import selenium_drivers.firefox as driver
-        case "chrome":
+        case "chrome" | "brave":
             logging.info("Using generic ChromeDriver")
             import selenium_drivers.chromium as driver
         case "msedge":
             logging.info("Using Microsoft Edge Driver")
             import selenium_drivers.msedge as driver
         case _:
-            logging.error("Browser not found")
+            logging.critical("Invalid browser setting in settings.json, clearing setting and exiting")
+            settings_json["browser"] = ""
+            settings_json["browser_path"] = ""
+            with open("user_configs/settings.json", "w") as file:
+                json.dump(settings_json, file, indent=4)
             exit(1)
