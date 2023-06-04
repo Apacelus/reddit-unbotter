@@ -4,6 +4,7 @@ from random import randint, uniform
 from time import sleep
 
 from selenium.common import NoSuchElementException, ElementClickInterceptedException
+from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.wait import WebDriverWait
@@ -15,14 +16,29 @@ def init_browser(proxy_ip, proxy_port, socks_version):
     return driver.init_session(proxy_ip, proxy_port, socks_version)
 
 
-def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version):
+def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version) -> str:
     browser = init_browser(proxy_ip, proxy_port, socks_version)
-    browser.get("https://www.reddit.com/login/")
+
+    # most users would go to reddit.com and then click login, instead of going to reddit.com/login
+    browser.get("https://www.reddit.com")
+    browser.find_element(By.LINK_TEXT, "Log In").click()
+
+    # switch to login iframe
+    browser.switch_to.frame(1)
+
+    # wait until login window opens
+    WebDriverWait(browser, 10).until(ec.element_to_be_clickable((By.ID, "loginUsername")))
     browser.find_element(By.ID, 'loginUsername').send_keys(username)
     browser.find_element(By.ID, 'loginPassword').send_keys(password)
-    sleep(1)
-    browser.find_element(By.XPATH, '/html/body/div/main/div[1]/div/div[2]/form/fieldset[5]/button').click()
+    browser.find_element(By.XPATH, "//button[contains(., 'Log In')]").send_keys(Keys.RETURN)  # click() doesn't work
     sleep(5)
+
+    # check if reddit returns error
+    if browser.find_element(By.CLASS_NAME, "AnimatedForm__errorMessage").text == "Incorrect username or password":
+        logging.error("Incorrect username or password")
+        browser.quit()
+        return "Incorrect username or password"
+
     session_cookie = browser.get_cookie("reddit_session")["value"]
     logging.debug(browser.get_cookie("reddit_session"))
     browser.quit()

@@ -154,12 +154,18 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     for account in config["NewAccounts"]:
         logging.info(f"Adding {account}to data.json")
         # add account to data.json
+        # get session cookie
+        session_cookie = browser_wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
+                                                            proxy_json[proxy_counter]["host"],
+                                                            proxy_json[proxy_counter]["port"],
+                                                            proxy_json[proxy_counter]["socksVersion"])
+        if session_cookie == "Incorrect username or password":
+            logging.error(f"Couldn't login {account}, skipping")
+            continue
+
         temp_account_dict = {
             "password": config.get("NewAccounts", account).strip(),
-            "session_cookie": browser_wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
-                                                                 proxy_json[proxy_counter]["host"],
-                                                                 proxy_json[proxy_counter]["port"],
-                                                                 proxy_json[proxy_counter]["socksVersion"]),
+            "session_cookie": session_cookie,
             "activity_level": activity_level,
             "vote_chance": vote_chance,
             "upvote_ratio": upvote_ratio,
