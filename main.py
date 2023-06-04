@@ -64,10 +64,10 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
         # add account to data.json
         temp_account_dict = {
             "password": config.get("NewAccounts", account).strip(),
-            "session_cookie": wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
-                                                         proxy_json[proxy_counter]["host"],
-                                                         proxy_json[proxy_counter]["port"],
-                                                         proxy_json[proxy_counter]["socksVersion"]),
+            "session_cookie": browser_wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
+                                                                 proxy_json[proxy_counter]["host"],
+                                                                 proxy_json[proxy_counter]["port"],
+                                                                 proxy_json[proxy_counter]["socksVersion"]),
             "activity_level": activity_level,
             "vote_chance": vote_chance,
             "upvote_ratio": upvote_ratio,
@@ -184,7 +184,7 @@ if __name__ == "__main__":
 
     check_jsons()
 
-    import wrapper
+    import browser_wrapper
 
     # Parse accounts.conf
     parse_accounts_conf()
