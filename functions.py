@@ -54,7 +54,7 @@ def mkdir(mk_dir: str, create_parents: bool = False) -> None:
 
 
 def path_exists(path_str: str) -> bool:
-    return Path(path_str).exists()
+    return Path(path_str).exists() if path_str else False  # return False if path_str is None/empty
 
 
 def get_full_path(path_str: str) -> str:
