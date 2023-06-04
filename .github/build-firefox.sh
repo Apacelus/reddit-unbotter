@@ -3,6 +3,8 @@
 # exit when any command fails
 set -e
 
+cwd=$(pwd) # needed for mach later
+
 # This script will build firefox from source without the webdriver flag to prevent websites from checking that flag
 
 latest_version=$(cat .github/firefox-version.txt)
@@ -30,4 +32,4 @@ yes | ./mach bootstrap --application-choice="Firefox for Desktop"
 mkdir -p ../release
 
 # install into release directory
-DESTDIR="../release" ./mach install
+DESTDIR="$cwd/release" ./mach install
