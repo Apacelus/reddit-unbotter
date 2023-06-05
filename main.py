@@ -184,6 +184,9 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
         config.remove_option("NewAccounts", account)
         calendar_json.initialize_account(account)
         config.set("InitializedAccounts", account, "")
+    # write new accounts.conf
+    with open("user_configs/accounts.conf", "w") as file:
+        config.write(file)
 
 
 def remove_accounts(config: configparser.ConfigParser) -> None:
