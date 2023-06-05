@@ -153,7 +153,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     # add new accounts
     proxy_counter = 0
     for account in config["NewAccounts"]:
-        logging.info(f"Adding {account}to data.json")
+        logging.info(f"Adding {account} to data.json")
         # add account to data.json
         # get session cookie
         session_cookie = browser_wrapper.get_session_cookie(account, config.get("NewAccounts", account).strip(),
@@ -183,7 +183,7 @@ def add_new_accounts(config: configparser.ConfigParser) -> None:
     for account in config["NewAccounts"]:
         config.remove_option("NewAccounts", account)
         calendar_json.initialize_account(account)
-        config.set("InitializedAccounts", account)
+        config.set("InitializedAccounts", account, "")
 
 
 def remove_accounts(config: configparser.ConfigParser) -> None:
