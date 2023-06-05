@@ -3,6 +3,7 @@ import logging
 from random import randint, uniform
 from time import sleep
 
+from selenium.common.exceptions import TimeoutException
 from selenium.common import NoSuchElementException, ElementClickInterceptedException
 from selenium.webdriver import Keys
 from selenium.webdriver.common.by import By
@@ -27,16 +28,18 @@ def get_session_cookie(username, password, proxy_ip, proxy_port, socks_version) 
     browser.find_element(By.ID, 'loginUsername').send_keys(username)
     browser.find_element(By.ID, 'loginPassword').send_keys(password)
     browser.find_element(By.XPATH, "//button[contains(., 'Log In')]").send_keys(Keys.RETURN)  # click() doesn't work
-    sleep(5)
+    try:
+        WebDriverWait(browser, 10).until(ec.url_to_be("https://www.reddit.com/"))  # wait for redirect to home page
+    except TimeoutException:
+        # read error message
+        error_message = browser.find_element(By.CLASS_NAME, "AnimatedForm__errorMessage").text
+        logging.error(error_message)
+        return error_message
 
-    # check if reddit returns error
-    if browser.find_element(By.CLASS_NAME, "AnimatedForm__errorMessage").text == "Incorrect username or password":
-        logging.error("Incorrect username or password")
-        browser.quit()
-        return "Incorrect username or password"
-
+    logging.info("Logged in successfully")
     session_cookie = browser.get_cookie("reddit_session")["value"]
     logging.debug(browser.get_cookie("reddit_session"))
+    logging.info("Session cookie acquired successfully")
     browser.quit()
     return session_cookie
 
