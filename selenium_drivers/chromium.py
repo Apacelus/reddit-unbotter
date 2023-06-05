@@ -13,7 +13,7 @@ def init_session(proxy_ip, proxy_port, socks_version):
         settings_json = json.load(file)
     chrome_options.binary_location = settings_json["browser_path"]
     # chrome_options.add_argument(f'--proxy-server=socks{socks_version}://{proxy_ip}:{proxy_port}')
-
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")  # hide webdriver.navigator flag
     session = webdriver.Chrome(
         service_log_path=f"/home/{os.getlogin()}/PycharmProjects/reddit-unbotter/logs/driver.log",
         service=ChromeService(ChromeDriverManager().install()),
